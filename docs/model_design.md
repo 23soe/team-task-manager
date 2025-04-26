@@ -1,6 +1,6 @@
 # モデル設計書
 
-![ERD Diagram](./docs/images/ERD.PNG)
+![ERD Diagram](./images/ERD.PNG)
 
 ## テーブル・カラム・リレーション構成
 
