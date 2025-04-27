@@ -25,7 +25,9 @@ div.task-card
     button(
         @click="$emit('edit', task)"
     ) 編集
-    button 削除
+    button(
+        @click="$emit('request-delete', task)"
+    ) 削除
     button(
       @click="toggleStatus(task)"
       :disabled="task.status === '完了'"

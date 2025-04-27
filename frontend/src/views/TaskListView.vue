@@ -16,8 +16,12 @@ const tasks = ref([
 const selectedAssignee = ref('')   // 担当者選択
 const selectedCategory = ref('')   // カテゴリ選択
 const selectedStatus = ref('') // ステータス選択
+
 const editingTask = ref(null) // 編集中のタスク
 const isEditModalOpen = ref(false) 
+
+const deletingTask = ref(null) // 削除中のタスク
+const isDeleteModalOpen = ref(false)
 
 const getAssignees = (userIds) => {
   return users.filter(user => userIds.includes(user.id))
@@ -84,6 +88,24 @@ const nextStatusText = (task) => {
   }
 }
 
+const requestDelete = (task) => {
+  deletingTask.value = task
+  isDeleteModalOpen.value = true
+}
+
+const confirmDelete = () => {
+  if (deletingTask.value) {
+    tasks.value = tasks.value.filter(t => t.id !== deletingTask.value.id)
+    deletingTask.value = null
+    isDeleteModalOpen.value = false
+  }
+}
+
+const cancleDelete = () => {
+  isDeleteModalOpen.value = false
+  deletingTask.value = null
+}
+    
 const startEdit = (task) => {
   editingTask.value = { ...task } 
   isEditModalOpen.value = true
@@ -138,6 +160,7 @@ const cancelEdit = () => {
           :toggleStatus="toggleStatus"
           :getAssignees="getAssignees"
           @edit="startEdit"
+          @request-delete="requestDelete"
         />
       </section>
 
@@ -150,6 +173,7 @@ const cancelEdit = () => {
           :toggleStatus="toggleStatus"
           :getAssignees="getAssignees"
           @edit="startEdit"
+          @request-delete="requestDelete"
         />
       </section>
 
@@ -162,8 +186,20 @@ const cancelEdit = () => {
           :toggleStatus="toggleStatus"
           :getAssignees="getAssignees"
           @edit="startEdit"
+          @request-delete="requestDelete"
         />
       </section>
+    </div>
+  </div>
+  <div v-if="isDeleteModalOpen" class="modal-overlay">
+    <div class="modal-content">
+      <h2>⚠️ タスク削除</h2>
+      <p>本当にこのタスクを削除しますか？</p>
+      <p>タスク名: {{ deletingTask.title }}</p>
+      <div class="modal-actions">
+        <button @click="confirmDelete">削除</button>
+        <button @click="cancleDelete">キャンセル</button>
+      </div>
     </div>
   </div>
   <div v-if="isEditModalOpen" class="modal-overlay">
