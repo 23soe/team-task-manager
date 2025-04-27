@@ -17,11 +17,27 @@ const selectedAssignee = ref('')   // 担当者選択
 const selectedCategory = ref('')   // カテゴリ選択
 const selectedStatus = ref('') // ステータス選択
 
+const isNewTask = ref(false) // 新規タスクフラグ
+
 const editingTask = ref(null) // 編集中のタスク
 const isEditModalOpen = ref(false) 
 
 const deletingTask = ref(null) // 削除中のタスク
 const isDeleteModalOpen = ref(false)
+
+const startCreate = () => {
+  editingTask.value = {
+    id: Date.now(), //使用するための一時的なID
+    title: '',
+    contents: '',
+    dueDate: '',
+    userIds: [],
+    category: '',
+    status: '開始前'  // 新規タスクは開始前からスタート
+  }
+  isNewTask.value = true
+  isEditModalOpen.value = true
+}
 
 const getAssignees = (userIds) => {
   return users.filter(user => userIds.includes(user.id))
@@ -68,7 +84,6 @@ const tasksCompleted = computed(() => {
   })
 })
 
-
 const toggleStatus = (task) => {
   if (task.status === '開始前') {
     task.status = '進行中'
@@ -112,12 +127,17 @@ const startEdit = (task) => {
 }
 
 const saveEdit = () => {
-  const index = tasks.value.findIndex(t => t.id === editingTask.value.id)
-  if (index !== -1) {
-    tasks.value[index] = { ...editingTask.value }
+  if (isNewTask.value) {
+    tasks.value.push({ ...editingTask.value })
+  } else {
+    const index = tasks.value.findIndex(t => t.id === editingTask.value.id)
+    if (index !== -1) {
+      tasks.value[index] = { ...editingTask.value }
+    }
   }
-  isEditModalOpen.value = false
   editingTask.value = null
+  isEditModalOpen.value = false
+  isNewTask.value = false
 }
 
 const cancelEdit = () => {
@@ -162,6 +182,7 @@ const cancelEdit = () => {
           @edit="startEdit"
           @request-delete="requestDelete"
         />
+        <button @click="startCreate" class="create-button">➕</button>
       </section>
 
       <section class="task-status-section">
@@ -240,6 +261,14 @@ const cancelEdit = () => {
 </template>
 
 <style scoped>
+.create-button {
+  width: 100%;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+}
+
 .task-section {
   margin: 0 atuo;
   display: flex;
