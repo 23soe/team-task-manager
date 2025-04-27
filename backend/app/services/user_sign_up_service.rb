@@ -9,7 +9,7 @@ class UserSignUpService
             password: params[:password],
             password_confirmation: params[:password_confirmation]
         )
-        @organization_id = params[:organization_id]
+        @organization_id = params[:organization_name]
         @errors = []
     end
 
@@ -17,7 +17,10 @@ class UserSignUpService
         ActiveRecord::Base.transaction do
             if @user.save
                 if @organization_id.present?
-                    UserOrganization.create!(user: @user, organization_id: @organization_id)
+                    organization = Organization.find_by(id: @organization_name)
+                    raise ActiveRecord::RecordNotFound, "指定された組織が存在しません。" unless organization
+
+                    UserOrganization.create!(user: @user, organization: organization)
                 end
                 true
             else
