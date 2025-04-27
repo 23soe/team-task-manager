@@ -1,0 +1,261 @@
+<script setup>
+import { ref, computed } from 'vue'
+import TaskCard from '@/components/TaskCard.vue'
+
+const users = [
+  { id: 1, name: '山田' },
+  { id: 2, name: '佐藤' },  
+  { id: 3, name: '鈴木' },
+]
+const tasks = ref([
+  { id: 1, title: 'タスク1', contents: '最初のタスク', status: '進行中', dueDate: '2025-05-01', userIds: [1, 2], category: '開発' },
+  { id: 2, title: 'タスク2', contents: '2番目のタスク', status: '開始前', dueDate: '2025-05-05', userIds: [2, 3], category: 'デザイン' },
+  { id: 3, title: 'タスク3', contents: '三番目のタスク', status: '完了', dueDate: '2025-05-07', userIds: [3], category: 'マーケティング' }
+])
+
+const selectedAssignee = ref('')   // 担当者選択
+const selectedCategory = ref('')   // カテゴリ選択
+const selectedStatus = ref('') // ステータス選択
+const editingTask = ref(null) // 編集中のタスク
+const isEditModalOpen = ref(false) 
+
+const getAssignees = (userIds) => {
+  return users.filter(user => userIds.includes(user.id))
+  .map(user => user.name).join(', ')
+}
+
+const tasksNotStarted = computed(() => {
+  if (!tasks.value) return []
+  return tasks.value.filter(task => {
+    const statusMatch = task.status === '開始前'
+    const assigneeMatch = selectedAssignee.value
+      ? task.userIds.includes(Number(selectedAssignee.value))
+      : true
+    const categoryMatch = selectedCategory.value
+      ? task.category === selectedCategory.value
+      : true
+    return statusMatch && assigneeMatch && categoryMatch
+  })
+})
+const tasksInProgress = computed(() => {
+  if (!tasks.value) return []
+  return tasks.value.filter(task => {
+    const statusMatch = task.status === '進行中'
+    const assigneeMatch = selectedAssignee.value
+      ? task.userIds.includes(Number(selectedAssignee.value))
+      : true
+    const categoryMatch = selectedCategory.value
+      ? task.category === selectedCategory.value
+      : true
+    return statusMatch && assigneeMatch && categoryMatch
+  })
+})
+const tasksCompleted = computed(() => {
+  if (!tasks.value) return []
+  return tasks.value.filter(task => {
+    const statusMatch = task.status === '完了'
+    const assigneeMatch = selectedAssignee.value
+      ? task.userIds.includes(Number(selectedAssignee.value))
+      : true
+    const categoryMatch = selectedCategory.value
+      ? task.category === selectedCategory.value
+      : true
+    return statusMatch && assigneeMatch && categoryMatch
+  })
+})
+
+
+const toggleStatus = (task) => {
+  if (task.status === '開始前') {
+    task.status = '進行中'
+  } else if (task.status === '進行中') {
+    task.status = '完了'
+  }
+  console.log('更新後タスク:', task)
+}
+
+const nextStatusText = (task) => {
+  if (task.status === '開始前') {
+    return '開始前'
+  } else if (task.status === '進行中') {
+    return '進行中'
+  } else {
+    return '完了'
+  }
+}
+
+const startEdit = (task) => {
+  editingTask.value = { ...task } 
+  isEditModalOpen.value = true
+}
+
+const saveEdit = () => {
+  const index = tasks.value.findIndex(t => t.id === editingTask.value.id)
+  if (index !== -1) {
+    tasks.value[index] = { ...editingTask.value }
+  }
+  isEditModalOpen.value = false
+  editingTask.value = null
+}
+
+const cancelEdit = () => {
+  isEditModalOpen.value = false
+  editingTask.value = null
+}
+
+</script>
+
+<template>
+  <div class="task-list-view">
+    <h1>タスク一覧画面</h1>
+    <div class="filters">
+      <label>
+          ⭐担当者
+          <select v-model="selectedAssignee">
+              <option value="">全て</option>
+              <option value="1">山田</option>
+              <option value="2">佐藤</option>
+              <option value="3">鈴木</option>
+          </select>
+      </label>
+      <label>
+          ⭐カテゴリ:
+          <select v-model="selectedCategory">
+              <option value="">全て</option>
+              <option value="開発">開発</option>
+              <option value="デザイン">デザイン</option>
+              <option value="マーケティング">マーケティング</option>
+          </select>
+      </label>
+    </div>
+    <div class="task-section">
+      <section class="task-status-section">
+        <h2>⏳ 開始前</h2>
+        <TaskCard 
+          v-for="task in tasksNotStarted" 
+          :key="task.id" 
+          :task="task"
+          :toggleStatus="toggleStatus"
+          :getAssignees="getAssignees"
+          @edit="startEdit"
+        />
+      </section>
+
+      <section class="task-status-section">
+        <h2>🚀 進行中</h2>
+        <TaskCard 
+          v-for="task in tasksInProgress" 
+          :key="task.id" 
+          :task="task"
+          :toggleStatus="toggleStatus"
+          :getAssignees="getAssignees"
+          @edit="startEdit"
+        />
+      </section>
+
+      <section class="task-status-section">
+        <h2>✅ 完了</h2>
+        <TaskCard 
+          v-for="task in tasksCompleted" 
+          :key="task.id" 
+          :task="task"
+          :toggleStatus="toggleStatus"
+          :getAssignees="getAssignees"
+          @edit="startEdit"
+        />
+      </section>
+    </div>
+  </div>
+  <div v-if="isEditModalOpen" class="modal-overlay">
+    <div class="modal-content">
+      <h2>📝 タスク編集</h2>
+
+      <label>⭐ タイトル:</label>
+      <input v-model="editingTask.title" placeholder="タイトル" />
+
+      <label>⭐ 内容:</label>
+      <textarea v-model="editingTask.contents" placeholder="内容"></textarea>
+
+      <label>⭐ 締切日:</label>
+      <input v-model="editingTask.dueDate" type="date" />
+
+      <label>⭐ 担当者:</label>
+      <div class="checkbox-group">
+          <label v-for="user in users" :key="user.id" class="checkbox-item">
+            <input type="checkbox" :value="user.id" v-model="editingTask.userIds" />
+            {{ user.name }}
+          </label>
+      </div>
+
+      <label>⭐ カテゴリ:</label>
+      <select v-model="editingTask.category">
+        <option value="">選択してください</option>
+        <option value="開発">開発</option>
+        <option value="デザイン">デザイン</option>
+        <option value="マーケティング">マーケティング</option>
+      </select>
+
+      <div class="modal-actions">
+        <button @click="saveEdit">保存</button>
+        <button @click="cancelEdit">キャンセル</button>
+      </div>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.task-section {
+  margin: 0 atuo;
+  display: flex;
+  justify-content: center; 
+  gap:1vw;
+}
+
+.task-status-section {
+  width: 30vw; 
+  min-width: 250px; 
+  padding: 10px;
+  border-radius: 8px;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  display: flex;
+  flex-direction: column;
+  background: black;
+  padding: 30px;
+  border-radius: 10px;
+  width: 400px;
+  max-width: 90%;
+}
+
+.modal-actions {
+  margin-top: 20px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.checkbox-item {
+  display: flex;
+  align-items: center;
+}
+
+</style>
