@@ -19,7 +19,7 @@ const handleSignup = () => {
 
 <template>
     <div class="signup-vie">
-        <h1>サインアップ画面</h1>
+        <h1>Sign up</h1>
         <form @submit.prevent="handleSignup">
             <input v-model="name" type="text" placeholder="名前" required/>
             <input v-model="email" type="email" placeholder="メールアドレス" required/>
