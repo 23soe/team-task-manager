@@ -1,11 +1,18 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import api from '@/plugins/axios'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
 const email = ref('')
 const password = ref('')
+
+onMounted(() => {
+    const token = localStorage.getItem('token')
+    if (token) {
+        router.push('/tasks')
+    }
+})
 
 const handleLogin = async () => {
     try {
@@ -37,8 +44,8 @@ const handleLogin = async () => {
     <div class="login-view">
         <h1>Login</h1>
         <form @submit.prevent="handleLogin">
-            <input v-model="email" type="email" placeholder="メールアドレスを入力してください。  " required />
-            <input v-model="password" type="password" placeholder="パスワードを入力してください。  " required />
+            <input v-model="email" type="email" placeholder="メールアドレス" required />
+            <input v-model="password" type="password" placeholder="パスワード " required />
             <button type="submit" class="login-button">ログイン</button>
             <router-link to="/signup" class="signup-button">
                 サインアップ

@@ -1,5 +1,24 @@
 <script setup>
-import HelloWorld from './components/HelloWorld.vue'
+import { onMounted, ref} from 'vue'
+import api from '@/plugins/axios'
+
+const currentUser = ref(null)
+
+onMounted(async () => {
+  const token = localStorage.getItem('token')
+  if (token) {
+    try {
+      const response = await api.get('/me')
+      currentUser.value = response.data.user
+      console.log('ログイン中ユーザー:', currentUser.value)
+    }catch (error) {
+      consoel.error('トークン無効または期限切れ', error)
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      windoe.location.href = '/login'
+    }
+  }
+})
 </script>
 
 <template>
