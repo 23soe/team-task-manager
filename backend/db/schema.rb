@@ -10,11 +10,31 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.0].define(version: 2025_04_27_164807) do
+ActiveRecord::Schema[7.0].define(version: 2025_04_28_153721) do
   create_table "organizations", force: :cascade do |t|
     t.string "name"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+  end
+
+  create_table "task_users", force: :cascade do |t|
+    t.integer "task_id", null: false
+    t.integer "user_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["task_id"], name: "index_task_users_on_task_id"
+    t.index ["user_id"], name: "index_task_users_on_user_id"
+  end
+
+  create_table "tasks", force: :cascade do |t|
+    t.string "title"
+    t.text "contents"
+    t.date "due_date"
+    t.string "status"
+    t.integer "organization_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["organization_id"], name: "index_tasks_on_organization_id"
   end
 
   create_table "user_organizations", force: :cascade do |t|
@@ -34,6 +54,9 @@ ActiveRecord::Schema[7.0].define(version: 2025_04_27_164807) do
     t.datetime "updated_at", null: false
   end
 
+  add_foreign_key "task_users", "tasks"
+  add_foreign_key "task_users", "users"
+  add_foreign_key "tasks", "organizations"
   add_foreign_key "user_organizations", "organizations"
   add_foreign_key "user_organizations", "users"
 end
