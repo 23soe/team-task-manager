@@ -1,15 +1,24 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import axios from 'axios'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
 const name = ref('')
-const organizations = ref([])
-const organizationOptions = ['開発部', '営業部', '人事部', 'マーケティング部']
+const selectedOrganizations  = ref([])
+const organizationOptions = ref([])
 const email = ref('')
 const password = ref('')
 const password_confirmation = ref('')
+
+onMounted(async () => {
+    try {
+        const response = await axios.get(`${import.meta.env.VITE_API_URL}/organizations`)
+        organizationOptions.value = response.data
+    } catch (error) {
+        console.error('組織の取得に失敗', error)
+    }
+})
 
 const handleSignup = async () => {
 
@@ -23,9 +32,9 @@ const handleSignup = async () => {
                 username: name.value,
                 email: email.value,
                 password: password.value,
-                password_confirmation: password.value,
-                organization_id: organizations.value
-            }
+                password_confirmation: password_confirmation.value,
+            },
+            organization_names: selectedOrganizations.value
         })
         console.log('サインアップ成功!', response.data)
         alert('登録が成功しました！')
@@ -48,8 +57,8 @@ const handleSignup = async () => {
             <div class="signup-organiztion">
                 <div v-for="org in organizationOptions" :key="org">
                     <label>
-                        <input type="checkbox" :value="org" v-model="organizations" />
-                        {{ org }}
+                        <input type="checkbox" :value="org.name" v-model="selectedOrganizations" />
+                        {{ org.name }}
                     </label>
                 </div>
             </div>
