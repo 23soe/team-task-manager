@@ -39,4 +39,38 @@ RSpec.describe "Sessions", type: :request do
             end
         end
     end
+
+    describe "GET /me" do
+        let!(:user) { User.create!(
+            username: 'テスト太郎',
+            email: 'test@example.com',
+            password: 'password123',
+            password_confirmation: 'password123'
+        )}
+        let(:token) do
+            post '/login', params: { email: 'test@example.com', password: 'password123' }
+            JSON.parse(response.body)['token']
+        end
+
+        context "正常系（認証トークンが有効な場合）" do
+            it "ユーザー情報を取得できる" do
+                # トークンを使って /me にアクセス
+                get '/me', headers: { "Authorization" => "Bearer #{token}" }
+
+                expect(response).to have_http_status(:ok)
+                body = JSON.parse(response.body)
+
+                expect(body['user']['email']).to eq('test@example.com')
+                expect(body['user']['username']).to eq('テスト太郎')
+            end
+        end
+        context "異常系（認証トークンが無効な場合）" do
+            it "401を返す" do
+                get '/me'
+
+                expect(response).to have_http_status(:unauthorized)
+                expect(JSON.parse(response.body)['errors']).to include("Invalid token")
+            end
+        end
+    end
 end
