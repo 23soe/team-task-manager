@@ -1,12 +1,35 @@
 <script setup>
 import { ref } from 'vue'
+import axios from 'axios'
+import { useRouter } from 'vue-router'
 
+const router = useRouter()
 const email = ref('')
 const password = ref('')
 
-const handleLogin = () => {
-    console.log('ログインボタンclick!', email.value, password.value)
-    //以降、Axiosでバックエンドにログイン要求を送信
+const handleLogin = async () => {
+    try {
+        const response = await axios.post(`${import.meta.env.VITE_API_URL}/login`, {
+            email: email.value,
+            password: password.value,
+        })
+        const { token, user } = response.data
+
+        localStorage.setItem('token', token)
+        localStorage.setItem('user', JSON.stringify(user))
+
+        alert('ログイン成功！')
+        router.push('/tasks')
+    }catch (error) {
+    console.error(error)
+
+    if (error.response) {
+      console.log(error.response.data)
+      alert(`ログイン失敗: ${error.response.data.errors?.[0] || 'エラー'}`)
+    } else {
+      alert('ログイン失敗（サーバーに接続できません）')
+    }
+  }
 }
 </script>
 
