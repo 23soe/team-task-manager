@@ -1,6 +1,6 @@
 <script setup>
 import { ref } from 'vue'
-import axios from 'axios'
+import api from '@/plugins/axios'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
@@ -9,7 +9,7 @@ const password = ref('')
 
 const handleLogin = async () => {
     try {
-        const response = await axios.post(`${import.meta.env.VITE_API_URL}/login`, {
+        const response = await api.post(`${import.meta.env.VITE_API_URL}/login`, {
             email: email.value,
             password: password.value,
         })
