@@ -1,7 +1,59 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import TaskCard from '@/components/TaskCard.vue'
+import api from '@/plugins/axios'
+
+const workspaces = ref([])
+const selectedWorkspace = ref(null) // 選択されたワークスペース
+
+onMounted(async () => {
+  try {
+    const response = await api.get(`${import.meta.env.VITE_API_URL}/workspaces`)
+    console.log('ワークスペースAPIレスポンス', response) 
+    workspaces.value = response.data.workspace
+    if (workspaces.value.length > 0) {
+      selectedWorkspace.value = workspaces.value[0]
+      await fetchTasksByWorkspace(selectedWorkspace.value.id)
+      await fetchWorkspaceDetail(selectedWorkspace.value.id)
+    }
+  } catch (error) {
+    console.error('ワークスペース取得エラー', error)
+  }
+})
+
+const tasks = ref([]) // タスク一覧
+
+const fetchTasksByWorkspace = async (workspaceId) => {
+  console.log('Fetch tasks for workspace:', workspaceId)
+  try {
+    const response = await api.get(`${import.meta.env.VITE_API_URL}/api/v1/workspaces/${workspaceId}/tasks`)
+    tasks.value = response.data
+  }catch (error) {
+    console.error('タスク取得エラー', error)
+    tasks.value = [] // エラー時は空の配列にする
+  }
+}
+
+const fetchWorkspaceDetail = async (workspaceId) => {
+  try {
+    const response = await api.get(`${import.meta.env.VITE_API_URL}/api/v1/workspaces/${workspaceId}`)
+    console.log('ワークスペース詳細取得レスポンス', response.data) // ← 꼭 찍어보기
+    selectedWorkspace.value = response.data
+  } catch (error) {
+    console.error('ワークスペース詳細取得エラー', error)
+  }
+}
+
+const selectWorkspace = (workspace) => {
+  selectedWorkspace.value = workspace
+  fetchTasksByWorkspace(workspace.id)
+  fetchWorkspaceDetail(workspace.id)
+}
+
+const selectedWorkspaceUsers = computed(() => {
+  return selectedWorkspace.value?.users || []
+})
 
 const router = useRouter()
 
@@ -10,17 +62,6 @@ const handleLogout = () => {
   localStorage.removeItem('user')
   router.push('/login')
 }
-
-const users = [
-  { id: 1, name: '山田' },
-  { id: 2, name: '佐藤' },  
-  { id: 3, name: '鈴木' },
-]
-const tasks = ref([
-  { id: 1, title: 'タスク1', contents: '最初のタスク', status: '進行中', dueDate: '2025-05-01', userIds: [1, 2], category: '開発' },
-  { id: 2, title: 'タスク2', contents: '2番目のタスク', status: '開始前', dueDate: '2025-05-05', userIds: [2, 3], category: 'デザイン' },
-  { id: 3, title: 'タスク3', contents: '三番目のタスク', status: '完了', dueDate: '2025-05-07', userIds: [3], category: 'マーケティング' }
-])
 
 const selectedAssignee = ref('')   // 担当者選択
 const selectedCategory = ref('')   // カテゴリ選択
@@ -157,120 +198,171 @@ const cancelEdit = () => {
 </script>
 
 <template>
-  <div class="task-list-view">
-    <button @click="handleLogout" class="logout-button">ログアウト</button>
-    <h1>タスク一覧画面</h1>
-    <div class="filters">
-      <label>
+  <div class="workspace-container">
+    <div class="workspace-selector">
+      <div class="workspace-buttons">
+        <button 
+          v-for="workspace in workspaces" 
+          :key="workspace.id" 
+          :class="['workspace-button', { active: selectedWorkspace?.id === workspace.id }]"
+          @click="selectWorkspace(workspace)"
+        >
+          {{ workspace.name }}
+        </button>
+      </div> <!-- /.workspace-buttons -->
+    </div> <!-- /.workspace-selector -->
+
+    <div class="task-list-view">
+      <button @click="handleLogout" class="logout-button">ログアウト</button>
+      <h1>タスク一覧画面</h1>
+
+      <div class="filters">
+        <label>
           ⭐担当者
           <select v-model="selectedAssignee">
-              <option value="">全て</option>
-              <option value="1">山田</option>
-              <option value="2">佐藤</option>
-              <option value="3">鈴木</option>
+            <option value="">全て</option>
+            <option 
+              v-for="user in selectedWorkspaceUsers" 
+              :key="user.id" 
+              :value="user.id"
+            >
+              {{ user.username }}
+            </option>
           </select>
-      </label>
-      <label>
+        </label>
+        <label>
           ⭐カテゴリ:
           <select v-model="selectedCategory">
-              <option value="">全て</option>
-              <option value="開発">開発</option>
-              <option value="デザイン">デザイン</option>
-              <option value="マーケティング">マーケティング</option>
+            <option value="">全て</option>
+            <option value="カテゴリ1">カテゴリ1</option>
+            <option value="カテゴリ2">カテゴリ2</option>
+            <option value="カテゴリ3">カテゴリ3</option>
           </select>
-      </label>
-    </div>
-    <div class="task-section">
-      <section class="task-status-section">
-        <h2>⏳ 開始前</h2>
-        <TaskCard 
-          v-for="task in tasksNotStarted" 
-          :key="task.id" 
-          :task="task"
-          :toggleStatus="toggleStatus"
-          :getAssignees="getAssignees"
-          @edit="startEdit"
-          @request-delete="requestDelete"
-        />
-        <button @click="startCreate" class="create-button">➕</button>
-      </section>
+        </label>
+      </div> <!-- /.filters -->
 
-      <section class="task-status-section">
-        <h2>🚀 進行中</h2>
-        <TaskCard 
-          v-for="task in tasksInProgress" 
-          :key="task.id" 
-          :task="task"
-          :toggleStatus="toggleStatus"
-          :getAssignees="getAssignees"
-          @edit="startEdit"
-          @request-delete="requestDelete"
-        />
-      </section>
+      <div class="task-section">
+        <section class="task-status-section">
+          <h2>⏳ 開始前</h2>
+          <TaskCard 
+            v-for="task in tasksNotStarted" 
+            :key="task.id" 
+            :task="task"
+            :toggleStatus="toggleStatus"
+            :getAssignees="getAssignees"
+            @edit="startEdit"
+            @request-delete="requestDelete"
+          />
+          <button @click="startCreate" class="create-button">➕</button>
+        </section>
 
-      <section class="task-status-section">
-        <h2>✅ 完了</h2>
-        <TaskCard 
-          v-for="task in tasksCompleted" 
-          :key="task.id" 
-          :task="task"
-          :toggleStatus="toggleStatus"
-          :getAssignees="getAssignees"
-          @edit="startEdit"
-          @request-delete="requestDelete"
-        />
-      </section>
-    </div>
-  </div>
-  <div v-if="isDeleteModalOpen" class="modal-overlay">
-    <div class="modal-content">
-      <h2>⚠️ タスク削除</h2>
-      <p>本当にこのタスクを削除しますか？</p>
-      <p>タスク名: {{ deletingTask.title }}</p>
-      <div class="modal-actions">
-        <button @click="confirmDelete">削除</button>
-        <button @click="cancleDelete">キャンセル</button>
+        <section class="task-status-section">
+          <h2>🚀 進行中</h2>
+          <TaskCard 
+            v-for="task in tasksInProgress" 
+            :key="task.id" 
+            :task="task"
+            :toggleStatus="toggleStatus"
+            :getAssignees="getAssignees"
+            @edit="startEdit"
+            @request-delete="requestDelete"
+          />
+        </section>
+
+        <section class="task-status-section">
+          <h2>✅ 完了</h2>
+          <TaskCard 
+            v-for="task in tasksCompleted" 
+            :key="task.id" 
+            :task="task"
+            :toggleStatus="toggleStatus"
+            :getAssignees="getAssignees"
+            @edit="startEdit"
+            @request-delete="requestDelete"
+          />
+        </section>
+      </div> <!-- /.task-section -->
+    </div> <!-- /.task-list-view -->
+
+    <div v-if="isDeleteModalOpen" class="modal-overlay">
+      <div class="modal-content">
+        <h2>⚠️ タスク削除</h2>
+        <p>本当にこのタスクを削除しますか？</p>
+        <p>タスク名: {{ deletingTask.title }}</p>
+        <div class="modal-actions">
+          <button @click="confirmDelete">削除</button>
+          <button @click="cancleDelete">キャンセル</button>
+        </div>
       </div>
     </div>
-  </div>
-  <div v-if="isEditModalOpen" class="modal-overlay">
-    <div class="modal-content">
-      <h2>📝 タスク編集</h2>
 
-      <label>⭐ タイトル:</label>
-      <input v-model="editingTask.title" placeholder="タイトル" />
+    <div v-if="isEditModalOpen" class="modal-overlay">
+      <div class="modal-content">
+        <h2>📝 タスク編集</h2>
 
-      <label>⭐ 内容:</label>
-      <textarea v-model="editingTask.contents" placeholder="内容"></textarea>
+        <label>⭐ タイトル:</label>
+        <input v-model="editingTask.title" placeholder="タイトル" />
 
-      <label>⭐ 締切日:</label>
-      <input v-model="editingTask.dueDate" type="date" />
+        <label>⭐ 内容:</label>
+        <textarea v-model="editingTask.contents" placeholder="内容"></textarea>
 
-      <label>⭐ 担当者:</label>
-      <div class="checkbox-group">
-          <label v-for="user in users" :key="user.id" class="checkbox-item">
+        <label>⭐ 締切日:</label>
+        <input v-model="editingTask.dueDate" type="date" />
+
+        <label>⭐ 担当者:</label>
+        <div class="checkbox-group">
+          <label 
+            v-for="user in selectedWorkspaceUsers" 
+            :key="user.id" 
+            class="checkbox-item"
+          >
             <input type="checkbox" :value="user.id" v-model="editingTask.userIds" />
-            {{ user.name }}
+            {{ user.username }}
           </label>
-      </div>
+        </div>
 
-      <label>⭐ カテゴリ:</label>
-      <select v-model="editingTask.category">
-        <option value="">選択してください</option>
-        <option value="開発">開発</option>
-        <option value="デザイン">デザイン</option>
-        <option value="マーケティング">マーケティング</option>
-      </select>
+        <label>⭐ カテゴリ:</label>
+        <select v-model="editingTask.category">
+          <option value="">選択してください</option>
+          <option value="カテゴリ1">カテゴリ1</option>
+          <option value="カテゴリ2">カテゴリ2</option>
+          <option value="カテゴリ3">カテゴリ3</option>
+        </select>
 
-      <div class="modal-actions">
-        <button @click="saveEdit">保存</button>
-        <button @click="cancelEdit">キャンセル</button>
+        <div class="modal-actions">
+          <button @click="saveEdit">保存</button>
+          <button @click="cancelEdit">キャンセル</button>
+        </div>
       </div>
     </div>
-  </div>
+
+  </div> <!-- /.workspace-container -->
 </template>
 
+
 <style scoped>
+.workspace-selector {
+  position: absolute;
+  top: 1vh;
+  left: 1vw;
+  cursor: pointer;
+  display: flex;
+}
+
+.workspace-buttons {
+  display: flex;
+  flex-direction: row;
+  gap: 2vh;
+}
+
+.workspace-button.active {
+  background: #646cff;
+}
+
+.task-list-view {
+  flex-grow: 1;
+}
+
 .logout-button{
   position: absolute;
   top: 1vh;
@@ -298,7 +390,7 @@ const cancelEdit = () => {
 }
 
 .task-status-section {
-  width: 30vw; 
+  width: 28vw; 
   min-width: 250px; 
   padding: 10px;
   border-radius: 8px;
