@@ -8,6 +8,7 @@ ja:
               blank: "を入力してください"
             email:
               blank: "を入力してください"
+              taken: "このメールアドレスは既に登録されています。"
             password:
               blank: "を入力してください"
   errors:

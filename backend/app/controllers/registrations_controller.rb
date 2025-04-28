@@ -1,16 +1,18 @@
 class RegistrationsController < ApplicationController
     def create
-        service = UserSignUpService.new(user_params)
-        if service.call
-            render json: { user: service.user }, status: :created
+        organization_names = params[:organization_names] || []
+        result = RegistrationService.new(signup_params, organization_names).call
+        
+        if result[:success]
+            render json: { user: result[:user] }, status: :created
         else
-            render json: { errors: service.errors }, status: :unprocessable_entity
+            render json: { errors: result[:errors] }, status: :unprocessable_entity
         end
     end
 
     private
 
-    def user_params
-        params.require(:user).permit(:username, :email, :password, :password_confirmation, :organization_id)
+    def signup_params
+        params.require(:user).permit(:username, :email, :password, :password_confirmation)
     end
 end

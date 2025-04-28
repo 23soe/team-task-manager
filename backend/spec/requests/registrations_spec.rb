@@ -9,32 +9,33 @@ RSpec.describe 'Registrations', type: :request do
                 email: 'test@example.com',
                 password: 'password123',
                 password_confirmation: 'password123'
-            }
+            },
+            organization_names: ["Team A", "Team B"]
         }
         end
 
-        let(:invalid_params) do
-            {
-                user: {
-                    username: '',
-                    email: '',
-                    password: '',
-                    password_confirmation: ''
-                }
-            }
-        end
-
-        context '有効なパラメータの場合' do
+        context '正常系（ユーザーと組織を正常に作成できる場合）' do
             it 'ユーザー登録に成功し、201を返す' do
-                post '/signup', params: valid_params
-                expect(response).to have_http_status(:created)
-                expect(JSON.parse(response.body)['user']['username']).to eq('テスト太郎')
+                expect {
+                    post '/signup', params: valid_params
+            }.to change(User, :count).by(1)
+            .and change(Organization, :count).by(2)
+            .and change(UserOrganization, :count).by(2)
+
+            expect(response).to have_http_status(:created)
+            body = JSON.parse(response.body)
+            expect(body['user']['email']).to eq('test@example.com')
             end
         end
         
-        context '無効なパラメータの場合' do
+        context '異常系（バリデーションエラーの場合）' do
             it 'ユーザー登録に失敗し、422を返す' do
-                post '/signup', params: invalid_params
+                invalid_params = valid_params.deep_merge(user: { email: '' })
+
+                expect { 
+                    post '/signup', params: invalid_params
+                }.to_not change(User, :count)
+
                 expect(response).to have_http_status(:unprocessable_entity)
                 expect(JSON.parse(response.body)['errors']).not_to be_empty
             end
