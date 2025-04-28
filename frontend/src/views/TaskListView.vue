@@ -1,6 +1,15 @@
 <script setup>
 import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import TaskCard from '@/components/TaskCard.vue'
+
+const router = useRouter()
+
+const handleLogout = () => {
+  localStorage.removeItem('token')
+  localStorage.removeItem('user')
+  router.push('/login')
+}
 
 const users = [
   { id: 1, name: '山田' },
@@ -149,6 +158,7 @@ const cancelEdit = () => {
 
 <template>
   <div class="task-list-view">
+    <button @click="handleLogout" class="logout-button">ログアウト</button>
     <h1>タスク一覧画面</h1>
     <div class="filters">
       <label>
@@ -261,6 +271,17 @@ const cancelEdit = () => {
 </template>
 
 <style scoped>
+.logout-button{
+  position: absolute;
+  top: 1vh;
+  right:1vw;
+  cursor: pointer;
+}
+.logout-button:hover {
+  border-color:rgb(241, 0, 0);
+  color: rgb(241, 0, 0);
+}
+
 .create-button {
   width: 100%;
   border-radius: 8px;
