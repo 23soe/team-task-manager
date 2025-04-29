@@ -90,16 +90,21 @@ const startCreate = () => {
 }
 
 const getAssignees = (userIds) => {
-  return users.filter(user => userIds.includes(user.id))
-  .map(user => user.name).join(', ')
+  if (!Array.isArray(userIds)) return ''
+  if (!selectedWorkspace.value || !Array.isArray(selectedWorkspace.value.users)) return ''
+
+  return selectedWorkspace.value.users
+    .filter(user => userIds.includes(user.id))
+    .map(user => user.username)
+    .join(', ') || '未担当'
 }
 
 const tasksNotStarted = computed(() => {
-  if (!tasks.value) return []
+  if (!tasks.value || !Array.isArray(tasks.value)) return []
   return tasks.value.filter(task => {
     const statusMatch = task.status === '開始前'
     const assigneeMatch = selectedAssignee.value
-      ? task.userIds.includes(Number(selectedAssignee.value))
+      ? (Array.isArray(task.user_ids) && task.user_ids.includes(Number(selectedAssignee.value)))
       : true
     const categoryMatch = selectedCategory.value
       ? task.category === selectedCategory.value
@@ -108,11 +113,11 @@ const tasksNotStarted = computed(() => {
   })
 })
 const tasksInProgress = computed(() => {
-  if (!tasks.value) return []
+  if (!tasks.value || !Array.isArray(tasks.value)) return []
   return tasks.value.filter(task => {
     const statusMatch = task.status === '進行中'
     const assigneeMatch = selectedAssignee.value
-      ? task.userIds.includes(Number(selectedAssignee.value))
+      ? (Array.isArray(task.user_ids) && task.user_ids.includes(Number(selectedAssignee.value)))
       : true
     const categoryMatch = selectedCategory.value
       ? task.category === selectedCategory.value
@@ -121,11 +126,11 @@ const tasksInProgress = computed(() => {
   })
 })
 const tasksCompleted = computed(() => {
-  if (!tasks.value) return []
+  if (!tasks.value || !Array.isArray(tasks.value)) return []
   return tasks.value.filter(task => {
     const statusMatch = task.status === '完了'
     const assigneeMatch = selectedAssignee.value
-      ? task.userIds.includes(Number(selectedAssignee.value))
+      ? (Array.isArray(task.user_ids) && task.user_ids.includes(Number(selectedAssignee.value)))
       : true
     const categoryMatch = selectedCategory.value
       ? task.category === selectedCategory.value
@@ -134,13 +139,19 @@ const tasksCompleted = computed(() => {
   })
 })
 
-const toggleStatus = (task) => {
+const toggleStatus = async (task) => {
   if (task.status === '開始前') {
     task.status = '進行中'
   } else if (task.status === '進行中') {
     task.status = '完了'
   }
-  console.log('更新後タスク:', task)
+  try {
+    await api.put(`${import.meta.env.VITE_API_URL}/api/v1/tasks/${task.id}`, task)
+    console.log('状態変更API成功:', task)
+  } catch (error) {
+    console.error('状態変更APIエラー', error)
+    alert('ステータス更新に失敗しました。')
+  }
 }
 
 const nextStatusText = (task) => {
@@ -158,11 +169,21 @@ const requestDelete = (task) => {
   isDeleteModalOpen.value = true
 }
 
-const confirmDelete = () => {
+const confirmDelete = async () => {
   if (deletingTask.value) {
-    tasks.value = tasks.value.filter(t => t.id !== deletingTask.value.id)
-    deletingTask.value = null
-    isDeleteModalOpen.value = false
+    try{
+      await api.delete(`${import.meta.env.VITE_API_URL}/api/v1/tasks/${deletingTask.value.id}`)
+      tasks.value = tasks.value.filter(t => t.id !== deletingTask.value.id)
+      deletingTask.value = null
+      isDeleteModalOpen.value = false
+    } catch (error) {
+      console.error('タスク削除エラー', error)
+    } finally {
+      if (isDeleteModalOpen.value !== null){
+        isDeleteModalOpen.value = false
+      }
+      deletingTask.value = null
+    }
   }
 }
 
@@ -172,22 +193,50 @@ const cancleDelete = () => {
 }
     
 const startEdit = (task) => {
-  editingTask.value = { ...task } 
+  editingTask.value = { 
+    ...task,
+    userIds: Array.isArray(task.userIds) ? [...task.userIds] : [] 
+  } 
+  isNewTask.value = false
   isEditModalOpen.value = true
 }
 
-const saveEdit = () => {
-  if (isNewTask.value) {
-    tasks.value.push({ ...editingTask.value })
-  } else {
-    const index = tasks.value.findIndex(t => t.id === editingTask.value.id)
-    if (index !== -1) {
-      tasks.value[index] = { ...editingTask.value }
+const saveEdit = async () => {
+  try {
+    const payload = {
+      title: editingTask.value.title,
+      contents: editingTask.value.contents,
+      due_date: editingTask.value.dueDate,  
+      status: editingTask.value.status,
+      category: editingTask.value.category,
+      user_ids: editingTask.value.userIds
     }
+
+    if (isNewTask.value) {
+      const response = await api.post(
+        `${import.meta.env.VITE_API_URL}/api/v1/workspaces/${selectedWorkspace.value.id}/tasks`,
+        payload
+      )
+      tasks.value.push(response.data)
+    } else {
+      const response = await api.put(
+        `${import.meta.env.VITE_API_URL}/api/v1/tasks/${editingTask.value.id}`,
+        payload
+      )
+      const index = tasks.value.findIndex(t => t.id === editingTask.value.id)
+      if (index !== -1) {
+        tasks.value[index] = response.data
+      }
+    }
+  } catch (error) {
+    console.error('タスク保存エラー', error)
+    alert('タスクの保存に失敗しました。')
+  } finally {
+    if (isEditModalOpen.value !== null) {
+      isEditModalOpen.value = false
+    }
+    editingTask.value = null
   }
-  editingTask.value = null
-  isEditModalOpen.value = false
-  isNewTask.value = false
 }
 
 const cancelEdit = () => {
@@ -247,7 +296,11 @@ const cancelEdit = () => {
           <TaskCard 
             v-for="task in tasksNotStarted" 
             :key="task.id" 
-            :task="task"
+            :task="{
+              ...task,
+              dueDate: task.due_date, // 🛠️ Snake -> Camel
+              userIds: task.user_ids
+            }"
             :toggleStatus="toggleStatus"
             :getAssignees="getAssignees"
             @edit="startEdit"
@@ -261,7 +314,11 @@ const cancelEdit = () => {
           <TaskCard 
             v-for="task in tasksInProgress" 
             :key="task.id" 
-            :task="task"
+            :task="{
+              ...task,
+              dueDate: task.due_date, // 🛠️ Snake -> Camel
+              userIds: task.user_ids
+            }"
             :toggleStatus="toggleStatus"
             :getAssignees="getAssignees"
             @edit="startEdit"
@@ -274,7 +331,11 @@ const cancelEdit = () => {
           <TaskCard 
             v-for="task in tasksCompleted" 
             :key="task.id" 
-            :task="task"
+            :task="{
+              ...task,
+              dueDate: task.due_date, // 🛠️ Snake -> Camel
+              userIds: task.user_ids
+            }"
             :toggleStatus="toggleStatus"
             :getAssignees="getAssignees"
             @edit="startEdit"

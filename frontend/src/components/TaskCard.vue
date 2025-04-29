@@ -17,7 +17,7 @@ const toggle = () => {
 <template lang="pug">
 div.task-card
   h3 {{ task.title }}
-  p 担当者: {{ getAssignees(task.userIds) }}
+  p 担当者: {{ getAssignees(task.userIds || []) }}
   p 期限: {{ task.dueDate }}
   p {{ task.contents }}
   p カテゴリ: {{ task.category }}
