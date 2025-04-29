@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import TaskCard from '@/components/TaskCard.vue'
 import api from '@/plugins/axios'
+import TeamProgressList from '@/components/TeamProgressList.vue'
 
 const workspaces = ref([])
 const selectedWorkspace = ref(null) // 選択されたワークスペース
@@ -260,7 +261,10 @@ const cancelEdit = () => {
         </button>
       </div> <!-- /.workspace-buttons -->
     </div> <!-- /.workspace-selector -->
-
+    <TeamProgressList
+      v-if="selectedWorkspace"
+      :workspace-id="selectedWorkspace.id"
+    />
     <div class="task-list-view">
       <button @click="handleLogout" class="logout-button">ログアウト</button>
       <h1>タスク一覧画面</h1>
