@@ -8,4 +8,5 @@ class Task < ApplicationRecord
   validates :due_date, presence: true
   validates :status, presence: true
   validates :organization_id, presence: true
+  validates :category, presence: true
 end
