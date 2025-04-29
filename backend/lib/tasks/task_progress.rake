@@ -16,6 +16,13 @@ namespace :task do
                     0.0
                 end
                 puts "ユーザー: #{user.username}, タスク数: #{total_tasks}, 完了タスク数: #{completed_tasks}, 進捗率: #{progress_rate}%"
+
+                TaskProgress.find_or_initialize_by(user_id: user.id, workspace_id: organization.id).tap do |tp|
+                    tp.total_tasks = total_tasks
+                    tp.completed_tasks = completed_tasks
+                    tp.progress_rate = progress_rate
+                    tp.save!
+                end
             end
         end
 
