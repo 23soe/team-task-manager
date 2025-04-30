@@ -10,51 +10,27 @@ div
         th 進捗率
     tbody
       tr(v-for="member in membersProgress" :key="member.id")
-        td
-          | {{ member.username }}
-          span(v-if="member.progress_rate === 100") 👑
+        td {{ member.username }}
         td {{ member.total_tasks }}
         td {{ member.completed_tasks }}
         td
           .progress-container
             .progress-bar(:style="getProgressStyle(member.progress_rate)")
-            span.progress-label {{ member.progress_rate }}%
+              span.progress-label {{ member.progress_rate }}%
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import api from '@/plugins/axios'
 
 const props = defineProps({
-  workspaceId: {
-    type: Number,
-    required: true
-  }
+  membersProgress: Array
 })
-
-const membersProgress = ref([])
-
-const fetchMembersProgress = async () => {
-  try {
-    const res = await api.get(`${import.meta.env.VITE_API_URL}/api/v1/task_progresses`, {
-      params: {
-        workspace_id: props.workspaceId
-      }
-    })
-    membersProgress.value = res.data
-  } catch (error) {
-    console.error('進捗一覧の取得に失敗しました', error)
-  }
-}
-
-onMounted(() => {
-  fetchMembersProgress()
-})
-
 
 const getProgressColor = (rate) => {
   if (rate >= 80) return '#4caf50' 
   if (rate >= 50) return '#ff9800' 
+  if (rate >= 0) return '#ff9800' 
 }
 
 
@@ -64,6 +40,10 @@ const getProgressStyle = (rate) => {
     backgroundColor: getProgressColor(rate)
   }
 }
+
+watch(() => props.workspaceId, () => {
+  fetchMembersProgress()
+})
 </script>
 
 <style scoped>
@@ -93,7 +73,6 @@ th, td {
 
 .progress-label {
   position: absolute;
-  width: 100%;
   text-align: center;
   font-size: 12px;
   line-height: 20px;

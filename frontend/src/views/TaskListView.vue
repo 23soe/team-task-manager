@@ -8,6 +8,20 @@ import TeamProgressList from '@/components/TeamProgressList.vue'
 const workspaces = ref([])
 const selectedWorkspace = ref(null) // 選択されたワークスペース
 
+const membersProgress = ref([]) // チームメンバーの進捗情報
+const fetchMembersProgress = async () => {
+  try {
+    const res = await api.get(`${import.meta.env.VITE_API_URL}/api/v1/task_progresses`, {
+      params: {
+        workspace_id: selectedWorkspace.value.id
+      }
+    })
+    membersProgress.value = res.data
+  } catch (error) {
+    console.error('進捗一覧の取得に失敗しました', error)
+  }
+}
+
 onMounted(async () => {
   try {
     const response = await api.get(`${import.meta.env.VITE_API_URL}/workspaces`)
@@ -17,6 +31,7 @@ onMounted(async () => {
       selectedWorkspace.value = workspaces.value[0]
       await fetchTasksByWorkspace(selectedWorkspace.value.id)
       await fetchWorkspaceDetail(selectedWorkspace.value.id)
+      await fetchMembersProgress()
     }
   } catch (error) {
     console.error('ワークスペース取得エラー', error)
@@ -50,6 +65,7 @@ const selectWorkspace = (workspace) => {
   selectedWorkspace.value = workspace
   fetchTasksByWorkspace(workspace.id)
   fetchWorkspaceDetail(workspace.id)
+  fetchMembersProgress()
 }
 
 const selectedWorkspaceUsers = computed(() => {
@@ -149,6 +165,13 @@ const toggleStatus = async (task) => {
   try {
     await api.put(`${import.meta.env.VITE_API_URL}/api/v1/tasks/${task.id}`, task)
     console.log('状態変更API成功:', task)
+
+    await api.post(`${import.meta.env.VITE_API_URL}/api/v1/task_progresses/recalculate`, {
+      workspace_id: selectedWorkspace.value.id
+    })
+
+    await fetchTasksByWorkspace(selectedWorkspace.value.id)
+
   } catch (error) {
     console.error('状態変更APIエラー', error)
     alert('ステータス更新に失敗しました。')
@@ -175,6 +198,12 @@ const confirmDelete = async () => {
     try{
       await api.delete(`${import.meta.env.VITE_API_URL}/api/v1/tasks/${deletingTask.value.id}`)
       tasks.value = tasks.value.filter(t => t.id !== deletingTask.value.id)
+
+      // ✅ 削除後に再集計（Rake経由のAPIを叩く）
+      await api.post(`${import.meta.env.VITE_API_URL}/api/v1/task_progresses/recalculate`, {
+        workspace_id: selectedWorkspace.value.id
+      })
+
       deletingTask.value = null
       isDeleteModalOpen.value = false
     } catch (error) {
@@ -219,6 +248,9 @@ const saveEdit = async () => {
         payload
       )
       tasks.value.push(response.data)
+      // ✅ タスク作成後、進捗率再集計（Rake呼び出し）
+      // await api.post(`${import.meta.env.VITE_API_URL}/api/v1/task_progresses/recalculate?workspace_id=${selectedWorkspace.value.id}`)
+
     } else {
       const response = await api.put(
         `${import.meta.env.VITE_API_URL}/api/v1/tasks/${editingTask.value.id}`,
@@ -264,6 +296,7 @@ const cancelEdit = () => {
     <TeamProgressList
       v-if="selectedWorkspace"
       :workspace-id="selectedWorkspace.id"
+      :members-progress="membersProgress"
     />
     <div class="task-list-view">
       <button @click="handleLogout" class="logout-button">ログアウト</button>
