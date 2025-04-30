@@ -1,9 +1,11 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import TaskCard from '@/components/TaskCard.vue'
 import api from '@/plugins/axios'
+
 import TeamProgressList from '@/components/TeamProgressList.vue'
+import TaskCard from '@/components/TaskCard.vue'
+import EditTaskModal from '@/components/EditTaskModal.vue'
 
 const workspaces = ref([])
 const selectedWorkspace = ref(null) // 選択されたワークスペース
@@ -54,7 +56,7 @@ const fetchTasksByWorkspace = async (workspaceId) => {
 const fetchWorkspaceDetail = async (workspaceId) => {
   try {
     const response = await api.get(`${import.meta.env.VITE_API_URL}/api/v1/workspaces/${workspaceId}`)
-    console.log('ワークスペース詳細取得レスポンス', response.data) // ← 꼭 찍어보기
+    console.log('ワークスペース詳細取得レスポンス', response.data) 
     selectedWorkspace.value = response.data
   } catch (error) {
     console.error('ワークスペース詳細取得エラー', error)
@@ -116,75 +118,50 @@ const getAssignees = (userIds) => {
     .join(', ') || '未担当'
 }
 
-const tasksNotStarted = computed(() => {
+const filteredTasksByStatus = (status) => {
   if (!tasks.value || !Array.isArray(tasks.value)) return []
   return tasks.value.filter(task => {
-    const statusMatch = task.status === '開始前'
+    const statusMatch = task.status === status
     const assigneeMatch = selectedAssignee.value
-      ? (Array.isArray(task.user_ids) && task.user_ids.includes(Number(selectedAssignee.value)))
+      ? Array.isArray(task.user_ids) && task.user_ids.includes(Number(selectedAssignee.value))
       : true
     const categoryMatch = selectedCategory.value
       ? task.category === selectedCategory.value
       : true
     return statusMatch && assigneeMatch && categoryMatch
   })
-})
-const tasksInProgress = computed(() => {
-  if (!tasks.value || !Array.isArray(tasks.value)) return []
-  return tasks.value.filter(task => {
-    const statusMatch = task.status === '進行中'
-    const assigneeMatch = selectedAssignee.value
-      ? (Array.isArray(task.user_ids) && task.user_ids.includes(Number(selectedAssignee.value)))
-      : true
-    const categoryMatch = selectedCategory.value
-      ? task.category === selectedCategory.value
-      : true
-    return statusMatch && assigneeMatch && categoryMatch
-  })
-})
-const tasksCompleted = computed(() => {
-  if (!tasks.value || !Array.isArray(tasks.value)) return []
-  return tasks.value.filter(task => {
-    const statusMatch = task.status === '完了'
-    const assigneeMatch = selectedAssignee.value
-      ? (Array.isArray(task.user_ids) && task.user_ids.includes(Number(selectedAssignee.value)))
-      : true
-    const categoryMatch = selectedCategory.value
-      ? task.category === selectedCategory.value
-      : true
-    return statusMatch && assigneeMatch && categoryMatch
-  })
-})
+}
 
-const toggleStatus = async (task) => {
-  if (task.status === '開始前') {
-    task.status = '進行中'
-  } else if (task.status === '進行中') {
-    task.status = '完了'
+const tasksNotStarted = computed(() => filteredTasksByStatus('開始前'))
+const tasksInProgress = computed(() => filteredTasksByStatus('進行中'))
+const tasksCompleted = computed(() => filteredTasksByStatus('完了'))
+
+// ✅ 状態を次に進めるユーティリティ
+const getNextStatus = (currentStatus) => {
+  switch (currentStatus) {
+    case '開始前':
+      return '進行中'
+    case '進行中':
+      return '完了'
+    default:
+      return '完了'
   }
+}
+
+// ✅ 状態変更ロジック（UI先行反映）
+const toggleStatus = async (task) => {
+  const previousStatus = task.status
+  task.status = getNextStatus(task.status)
+
   try {
     await api.put(`${import.meta.env.VITE_API_URL}/api/v1/tasks/${task.id}`, task)
     console.log('状態変更API成功:', task)
 
-    await api.post(`${import.meta.env.VITE_API_URL}/api/v1/task_progresses/recalculate`, {
-      workspace_id: selectedWorkspace.value.id
-    })
-
     await fetchTasksByWorkspace(selectedWorkspace.value.id)
-
   } catch (error) {
     console.error('状態変更APIエラー', error)
     alert('ステータス更新に失敗しました。')
-  }
-}
-
-const nextStatusText = (task) => {
-  if (task.status === '開始前') {
-    return '開始前'
-  } else if (task.status === '進行中') {
-    return '進行中'
-  } else {
-    return '完了'
+    task.status = previousStatus
   }
 }
 
@@ -194,24 +171,17 @@ const requestDelete = (task) => {
 }
 
 const confirmDelete = async () => {
+  isDeleteModalOpen.value = false
   if (deletingTask.value) {
     try{
       await api.delete(`${import.meta.env.VITE_API_URL}/api/v1/tasks/${deletingTask.value.id}`)
       tasks.value = tasks.value.filter(t => t.id !== deletingTask.value.id)
-
-      // ✅ 削除後に再集計（Rake経由のAPIを叩く）
-      await api.post(`${import.meta.env.VITE_API_URL}/api/v1/task_progresses/recalculate`, {
-        workspace_id: selectedWorkspace.value.id
-      })
 
       deletingTask.value = null
       isDeleteModalOpen.value = false
     } catch (error) {
       console.error('タスク削除エラー', error)
     } finally {
-      if (isDeleteModalOpen.value !== null){
-        isDeleteModalOpen.value = false
-      }
       deletingTask.value = null
     }
   }
@@ -232,6 +202,7 @@ const startEdit = (task) => {
 }
 
 const saveEdit = async () => {
+  isEditModalOpen.value = false
   try {
     const payload = {
       title: editingTask.value.title,
@@ -248,8 +219,6 @@ const saveEdit = async () => {
         payload
       )
       tasks.value.push(response.data)
-      // ✅ タスク作成後、進捗率再集計（Rake呼び出し）
-      // await api.post(`${import.meta.env.VITE_API_URL}/api/v1/task_progresses/recalculate?workspace_id=${selectedWorkspace.value.id}`)
 
     } else {
       const response = await api.put(
@@ -264,10 +233,8 @@ const saveEdit = async () => {
   } catch (error) {
     console.error('タスク保存エラー', error)
     alert('タスクの保存に失敗しました。')
+    isEditModalOpen.value = open
   } finally {
-    if (isEditModalOpen.value !== null) {
-      isEditModalOpen.value = false
-    }
     editingTask.value = null
   }
 }
@@ -276,6 +243,28 @@ const cancelEdit = () => {
   isEditModalOpen.value = false
   editingTask.value = null
 }
+
+const lastUpdated = ref(null)
+
+const recalculateProgress = async () => {
+  try{
+    await api.post(`${import.meta.env.VITE_API_URL}/api/v1/task_progresses/recalculate`, {
+      workspace_id: selectedWorkspace.value.id
+    })
+    await fetchMembersProgress()
+    lastUpdated.value = new Date()
+    alert('進捗を更新しました ✅')
+  }catch(error){
+    console.error('進捗再集計エラー', error)
+    alert('進捗の再集計に失敗しました。')
+  }
+}
+
+const taskSections = computed(() => [
+  { label: '⏳ 開始前', tasks: tasksNotStarted.value },
+  { label: '🚀 進行中', tasks: tasksInProgress.value },
+  { label: '✅ 完了', tasks: tasksCompleted.value },
+])
 
 </script>
 
@@ -293,15 +282,18 @@ const cancelEdit = () => {
         </button>
       </div> <!-- /.workspace-buttons -->
     </div> <!-- /.workspace-selector -->
+
     <TeamProgressList
       v-if="selectedWorkspace"
       :workspace-id="selectedWorkspace.id"
       :members-progress="membersProgress"
     />
-    <div class="task-list-view">
-      <button @click="handleLogout" class="logout-button">ログアウト</button>
-      <h1>タスク一覧画面</h1>
 
+    <div class="progress-update-control">
+      <button @click="recalculateProgress" class="recalc-button">🔄 進捗を再集計</button>
+    </div>
+    <button @click="handleLogout" class="logout-button">ログアウト</button>
+    <div class="task-list-view">
       <div class="filters">
         <label>
           ⭐担当者
@@ -328,14 +320,18 @@ const cancelEdit = () => {
       </div> <!-- /.filters -->
 
       <div class="task-section">
-        <section class="task-status-section">
-          <h2>⏳ 開始前</h2>
-          <TaskCard 
-            v-for="task in tasksNotStarted" 
-            :key="task.id" 
+        <section
+          v-for="(section, i) in taskSections"
+          :key="i"
+          class="task-status-section"
+        >
+          <h2>{{ section.label }}</h2>
+          <TaskCard
+            v-for="task in section.tasks"
+            :key="task.id"
             :task="{
               ...task,
-              dueDate: task.due_date, // 🛠️ Snake -> Camel
+              dueDate: task.due_date,
               userIds: task.user_ids
             }"
             :toggleStatus="toggleStatus"
@@ -343,41 +339,13 @@ const cancelEdit = () => {
             @edit="startEdit"
             @request-delete="requestDelete"
           />
-          <button @click="startCreate" class="create-button">➕</button>
-        </section>
-
-        <section class="task-status-section">
-          <h2>🚀 進行中</h2>
-          <TaskCard 
-            v-for="task in tasksInProgress" 
-            :key="task.id" 
-            :task="{
-              ...task,
-              dueDate: task.due_date, // 🛠️ Snake -> Camel
-              userIds: task.user_ids
-            }"
-            :toggleStatus="toggleStatus"
-            :getAssignees="getAssignees"
-            @edit="startEdit"
-            @request-delete="requestDelete"
-          />
-        </section>
-
-        <section class="task-status-section">
-          <h2>✅ 完了</h2>
-          <TaskCard 
-            v-for="task in tasksCompleted" 
-            :key="task.id" 
-            :task="{
-              ...task,
-              dueDate: task.due_date, // 🛠️ Snake -> Camel
-              userIds: task.user_ids
-            }"
-            :toggleStatus="toggleStatus"
-            :getAssignees="getAssignees"
-            @edit="startEdit"
-            @request-delete="requestDelete"
-          />
+          <button
+            v-if="i === 0"
+            @click="startCreate"
+            class="create-button"
+          >
+            ➕
+          </button>
         </section>
       </div> <!-- /.task-section -->
     </div> <!-- /.task-list-view -->
@@ -394,45 +362,13 @@ const cancelEdit = () => {
       </div>
     </div>
 
-    <div v-if="isEditModalOpen" class="modal-overlay">
-      <div class="modal-content">
-        <h2>📝 タスク編集</h2>
-
-        <label>⭐ タイトル:</label>
-        <input v-model="editingTask.title" placeholder="タイトル" />
-
-        <label>⭐ 内容:</label>
-        <textarea v-model="editingTask.contents" placeholder="内容"></textarea>
-
-        <label>⭐ 締切日:</label>
-        <input v-model="editingTask.dueDate" type="date" />
-
-        <label>⭐ 担当者:</label>
-        <div class="checkbox-group">
-          <label 
-            v-for="user in selectedWorkspaceUsers" 
-            :key="user.id" 
-            class="checkbox-item"
-          >
-            <input type="checkbox" :value="user.id" v-model="editingTask.userIds" />
-            {{ user.username }}
-          </label>
-        </div>
-
-        <label>⭐ カテゴリ:</label>
-        <select v-model="editingTask.category">
-          <option value="">選択してください</option>
-          <option value="カテゴリ1">カテゴリ1</option>
-          <option value="カテゴリ2">カテゴリ2</option>
-          <option value="カテゴリ3">カテゴリ3</option>
-        </select>
-
-        <div class="modal-actions">
-          <button @click="saveEdit">保存</button>
-          <button @click="cancelEdit">キャンセル</button>
-        </div>
-      </div>
-    </div>
+    <EditTaskModal
+      :task="editingTask"
+      :users="selectedWorkspaceUsers"
+      :visible="isEditModalOpen"
+      @save="saveEdit"
+      @cancel="cancelEdit"
+    />
 
   </div> <!-- /.workspace-container -->
 </template>
@@ -457,6 +393,11 @@ const cancelEdit = () => {
   background: #646cff;
 }
 
+.progress-update-control{
+  display:flex;
+  justify-content: flex-end
+}
+
 .task-list-view {
   flex-grow: 1;
 }
@@ -477,7 +418,6 @@ const cancelEdit = () => {
   border-radius: 8px;
   border: none;
   cursor: pointer;
-  font-size: 16px;
 }
 
 .task-section {
@@ -494,44 +434,10 @@ const cancelEdit = () => {
   border-radius: 8px;
 }
 
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0,0,0,0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
+.recalc-button {
+  margin: 1vh;
+  padding: 0.5vh 0.5vw;
+  border: none;
+  cursor: pointer;
 }
-
-.modal-content {
-  display: flex;
-  flex-direction: column;
-  background: black;
-  padding: 30px;
-  border-radius: 10px;
-  width: 400px;
-  max-width: 90%;
-}
-
-.modal-actions {
-  margin-top: 20px;
-  display: flex;
-  justify-content: space-between;
-}
-
-.checkbox-group {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.checkbox-item {
-  display: flex;
-  align-items: center;
-}
-
 </style>
