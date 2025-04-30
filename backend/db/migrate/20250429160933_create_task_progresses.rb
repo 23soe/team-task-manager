@@ -5,7 +5,7 @@ class CreateTaskProgresses < ActiveRecord::Migration[7.0]
       t.references :workspace, null: false, foreign_key: true
       t.integer :total_tasks
       t.integer :completed_tasks
-      t.decimal :progress_rate
+      t.decimal :progress_rate, precision: 5, scale: 2
 
       t.timestamps
     end
