@@ -15,8 +15,14 @@
 | task | id | title | string | なし | タスクタイトル | task_users, categories と関連 | 
 |  |  | contents | string | なし | タスク内容 |  | 
 |  |  | status | int | なし | タスクステータス（開始前/進行中/完了） |  | 
-|  |  | deadline | date | なし | 締切日 |  | 
-|  |  | categoryId | id | category(id) | カテゴリーID |  | 
+|  |  | due_date | date | なし | 締切日 |  | 
+|  |  | category | string | なし | カテゴリーID |  | 
+|  |  | organization_id | int | organizations(id) | 所属組織 |  |
 | task_users | id | taskId | int | task(id) | タスクID | tasks と users を中間テーブルで関連 | 
 |  |  | userId | int | user(id) | ユーザーID |  | 
 | category | id | name | string | なし | カテゴリー名 | taskと関連 | 
+| task_progresses | id | user_id | int | users(id) | 担当者ID | task数・完了数・進捗率を保存 | 
+|  |  | workspace_id | int | organizations(id) | 組織ID |  | 
+|  |  | total_tasks | int | なし | 全タスク数 |  | 
+|  |  | completed_tasks | int | なし | 完了タスク数 |  | 
+|  |  | progress_rate | decimal | なし | 進捗率（0.00〜1.00） |  |
