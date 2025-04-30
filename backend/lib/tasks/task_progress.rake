@@ -21,7 +21,12 @@ namespace :task do
                     tp.total_tasks = total_tasks
                     tp.completed_tasks = completed_tasks
                     tp.progress_rate = progress_rate
-                    tp.save!
+                    if tp.save
+                        puts "✅ 保存成功: #{tp.user.username}"
+                     else
+                        puts "❌ 保存失敗: #{tp.errors.full_messages.join(', ')}"
+                        puts "🧪 値: user_id=#{tp.user_id}, workspace_id=#{tp.workspace_id}, total=#{tp.total_tasks}, done=#{tp.completed_tasks}"
+                    end                      
                 end
             end
         end
