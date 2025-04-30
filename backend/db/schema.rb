@@ -10,7 +10,10 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.0].define(version: 2025_04_29_172718) do
+ActiveRecord::Schema[7.0].define(version: 2025_04_30_103519) do
+  # These are extensions that must be enabled in order to support this database
+  enable_extension "plpgsql"
+
   create_table "organizations", force: :cascade do |t|
     t.string "name"
     t.datetime "created_at", null: false
@@ -18,20 +21,19 @@ ActiveRecord::Schema[7.0].define(version: 2025_04_29_172718) do
   end
 
   create_table "task_progresses", force: :cascade do |t|
-    t.integer "user_id", null: false
-    t.integer "workspace_id", null: false
+    t.bigint "user_id", null: false
+    t.integer "workspace_id"
     t.integer "total_tasks"
     t.integer "completed_tasks"
     t.decimal "progress_rate"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["user_id"], name: "index_task_progresses_on_user_id"
-    t.index ["workspace_id"], name: "index_task_progresses_on_workspace_id"
   end
 
   create_table "task_users", force: :cascade do |t|
-    t.integer "task_id", null: false
-    t.integer "user_id", null: false
+    t.bigint "task_id", null: false
+    t.bigint "user_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["task_id"], name: "index_task_users_on_task_id"
@@ -43,7 +45,7 @@ ActiveRecord::Schema[7.0].define(version: 2025_04_29_172718) do
     t.text "contents"
     t.date "due_date"
     t.string "status"
-    t.integer "organization_id", null: false
+    t.bigint "organization_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "category"
@@ -51,8 +53,8 @@ ActiveRecord::Schema[7.0].define(version: 2025_04_29_172718) do
   end
 
   create_table "user_organizations", force: :cascade do |t|
-    t.integer "user_id", null: false
-    t.integer "organization_id", null: false
+    t.bigint "user_id", null: false
+    t.bigint "organization_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["organization_id"], name: "index_user_organizations_on_organization_id"
