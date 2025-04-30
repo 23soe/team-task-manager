@@ -12,5 +12,15 @@ class Api::V1::TaskProgressesController < ApplicationController
                 progress_rate: p.progress_rate
             }
         }
-    end      
+    end   
+    
+    def recalculate
+        workspace_id = params[:workspace_id]
+        if workspace_id.present?
+            system("bundle exec rake task:aggregate_progress[#{workspace_id}]")
+            head :ok
+        else
+            render json: { error: 'workspace_id is required' }, status: :bad_request
+        end
+    end
 end

@@ -12,6 +12,8 @@ Rails.application.routes.draw do
       end
       resources :tasks, only: [:update, :destroy] 
       resources :task_progresses, only: [:index] 
+
+      post "task_progresses/recalculate", to: "task_progresses#recalculate"
     end
   end
 
