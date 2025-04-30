@@ -1,6 +1,8 @@
-# Team Task Manager 全体フロー
+# Team Task Manager 全体設計フロー
 
 ---
+
+## 1. ログイン・サインアップ・タスク管理統合フロー
 
 ```mermaid
 flowchart TD
@@ -51,4 +53,16 @@ flowchart TD
     K1 --> G1
     K2 --> G1
     K3 --> G1
+```
+---
+
+## 2. アーキテクチャフロー（User→Controller→Service→Model→DB）
+
+```mermaid
+flowchart LR
+    A[ユーザー操作（Vueコンポーネント）] --> B[APIリクエスト送信（Axios）]
+    B --> C[Rails Controller]
+    C --> D[サービス層（Serviceクラス）]
+    D --> E[モデル層（ActiveRecordモデル）]
+    E --> F[DB操作（INSERT/SELECT/UPDATE/DELETE）]
 ```
