@@ -73,7 +73,7 @@ rails s
 
 ### 3. フロントエンド（Vue.js）
 ```bash
-cd ../frontend
+cd frontend
 npm install
 npm run dev
 ```
