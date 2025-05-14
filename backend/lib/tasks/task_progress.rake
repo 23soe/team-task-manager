@@ -1,36 +1,7 @@
 namespace :task do
     desc 'ワークスペースごとに、担当者ごとのタスク進捗率を集計する'
-    task aggregate_progress: :environment do
-        puts 'バッチ処理開始: ワークスペースごとの担当者タスク進捗率を集計'
 
-        Organization.find_each do |organization|
-            puts "ワークスペース: #{organization.name}"
-
-            organization.users.find_each do |user|
-                total_tasks = user.tasks.where(organization_id: organization.id).count
-                completed_tasks = user.tasks.where(organization_id: organization.id, status: '完了').count
-
-                progress_rate = if total_tasks.positive?
-                    (completed_tasks.to_f / total_tasks * 100).round(2)
-                else
-                    0.0
-                end
-                puts "ユーザー: #{user.username}, タスク数: #{total_tasks}, 完了タスク数: #{completed_tasks}, 進捗率: #{progress_rate}%"
-
-                TaskProgress.find_or_initialize_by(user_id: user.id, workspace_id: organization.id).tap do |tp|
-                    tp.total_tasks = total_tasks
-                    tp.completed_tasks = completed_tasks
-                    tp.progress_rate = progress_rate
-                    if tp.save
-                        puts "✅ 保存成功: #{tp.user.username}"
-                     else
-                        puts "❌ 保存失敗: #{tp.errors.full_messages.join(', ')}"
-                        puts "🧪 値: user_id=#{tp.user_id}, workspace_id=#{tp.workspace_id}, total=#{tp.total_tasks}, done=#{tp.completed_tasks}"
-                    end                      
-                end
-            end
-        end
-
-        puts 'バッチ処理終了: ワークスペースごとの担当者タスク進捗率を集計'
+    task aggregate_progress: [:workspace_id] => :environment do |t, args|
+        TaskProgressAggregator.run(args[:workspace_id], parallel: true)
     end
 end

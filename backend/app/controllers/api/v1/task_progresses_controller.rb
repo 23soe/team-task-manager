@@ -16,8 +16,10 @@ class Api::V1::TaskProgressesController < ApplicationController
     
     def recalculate
         workspace_id = params[:workspace_id]
+        parallel = ActiveModel::Type::Boolean.new.cast(params[:parallel])
+
         if workspace_id.present?
-            system("bundle exec rake task:aggregate_progress[#{workspace_id}]")
+            TaskProgressAggregator.run(params[:workspace_id], parallel: parallel)
             head :ok
         else
             render json: { error: 'workspace_id is required' }, status: :bad_request
