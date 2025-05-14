@@ -1,97 +1,71 @@
-# Team Task Manager
+# ✨ Ruby on Rails における並列処理の実装と設計
 
-簡易なタスク共有SaaSツール
+## 🧠 並列処理とは？
 
-## 🚀 Web Service
-[https://team-task-manager-chgc.onrender.com](https://team-task-manager-chgc.onrender.com)
+複数の処理を同時に実行することで、全体の処理時間を短縮する技術です。  順次処理（一つずつ実行）と異なり、複数のCPUコアを同時に活用することで高速化が可能です。
 
-## 📌 概要
+例：ユーザーごとの進捗集計を同時に処理することで、処理全体を効率化できる
 
-Team Task Managerは、複数の組織・担当者でタスクを共有・管理できるSaaS型Webアプリケーションです。Ruby on Rails（APIモード）と Vue.js 3 を用いて構築されており、以下のような機能を提供します。
+> 🤔 処理速度向上 /システム負荷が増加する可能性あり
 
-## 🛠 使用技術
+## 🛠 Rubyで並列処理を行う方法（3種類）
+１.　Thread：Ruby標準のスレッド機能。基本的な並列処理が可能
+２.　Parallel gem：シンプルで直感的。ループ処理の並列化に特化（本プロジェクトで使用）
+３.　Sidekiq： 非同期ジョブキュー方式。実務では最も使用されている
 
-### バックエンド
+## 並列処理が有効なケース
 
-- Ruby on Rails 7（APIモード）
-  ruby version = "3.1.6"
-  Rails version = "7.0.7"
-- PostgreSQL
-- JWT認証
-- RSpec（ユニットテスト）
-- Rakeタスク（バッチ処理）
+- APIで複数データを一括取得 ：ネットワーク待ち時間の短縮 
+- Rakeタスクで大量集計処理 ： 実行時間を大幅に短縮可能 
+- CSVなどの大規模データ処理 ： 同時読み込み・保存の高速化 
 
-### フロントエンド
+## ⚠️ 並列処理時のログ出力について
 
-- Vue.js 3
-- Vite
-- Pug（テンプレート言語）
-- Axios（API通信）
-- Pinia（状態管理）
+本バッチ処理では、ユーザー単位での集計結果を `puts` で出力していますが、  並列処理ではこの出力がボトルネック(Bottleneck) になる可能性があります。
 
-## 🔐 主な機能
+### 対策案
 
-- ユーザー認証（サインアップ / ログイン / ログアウト）
-- ワークスペース管理（ユーザーが複数組織に所属可能）
-- タスク管理
-  - タスク作成 / 編集 / 削除
-  - 担当者アサイン（複数人可）
-  - 状態（開始前・進行中・完了）切替
-  - カテゴリ設定
-- タスクのフィルタリング（担当者 / カテゴリ / 完了状態）
-- タスク進捗率のバッチ集計（Rakeタスクで定期処理）
+- `Rails.logger.info` などで出力レベルを調整
+- 配列にログを蓄積して後で一括出力することで改善可能
 
-## 📂 ディレクトリ構成
+##  処理方式比較：Rake vs サービスメソッド
 
-team-task-manager/ 
-- backend/ # Rails API 
-- frontend/ # Vue 3 + Vite + Pug 
-- docs/ # 設計書（画面仕様書、モデル設計書など） 
-- README.md (概要と使い方)
+| 項目 | `system("bundle exec rake ...")` | `TaskProgressAggregator.run(...)` |
+|:---|:---|:---|
+| 実行方法 | 外部シェルコマンド | Rails内部で直接メソッド呼び出し |
+| パフォーマンス | 遅い（環境を一から立ち上げる） | 速い（現在のプロセスをそのまま使用） |
+| エラーハンドリング | `true/false` のみ判定可 | `rescue` で例外処理が可能 |
+| 戻り値 | なし（nil） | あり（任意の値を返却可能） |
+| ログ制御 | puts出力のみ | logger・CSV出力・JSON整形可能 |
+| テスト容易性 | 単体テスト不可 | RSpecなどでテスト可能 |
 
-# ① 開発者向けの使用方法（ローカル環境起動手順）
-
-## 💻 使用方法（ローカル開発環境）
-
-### 1. リポジトリをクローン
+## 📂全体処理フロー（Vue / API / Locust）
 
 ```bash
-git clone https://github.com/your-username/team-task-manager.git
-cd team-task-manager
+[Vueボタン / Locustリクエスト]
+   ↓
+[POST /api/v1/task_progresses/recalculate]
+   ↓
+[コントローラーでパラメータ受け取り]
+   ├─ parallel: false → 順次処理
+   └─ parallel: true  → 並列処理（Parallel.each）
+   ↓
+[TaskProgressAggregator.run(...) 実行]
+   ↓
+[タスク進捗率を計算 → TaskProgressへ保存]
+   ↓
+[ログ記録 or API応答完了]
 ```
 
-### 2. バックエンド（Rails API）
+##🧪 Locust テスト（locustfile.py）
+- /recalculate API に対して parallel: true/false の両方をランダムに送信
+- 並列処理と順次処理の性能差を定量的に比較できる
+- locust -f locustfile.py --host http://localhost:3000 で実行
+![ERD Diagram](./docs/images/Locust.png)
 
-```bash
-cd backend
-bundle install
-rails db:create db:migrate
-rails s
-
-※ PostgreSQLを使用しています。必要に応じて .env や seeds.rb を活用して初期データを投入してください。
-```
-
-### 3. フロントエンド（Vue.js）
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-# ② ユーザー向けの利用方法（UI操作ガイド）
-
-## 👩🏻‍💻 利用方法（ユーザー視点）
-
-1. サインアップページにて以下の情報を入力し登録：
-   - 名前
-   - 組織名
-   - メールアドレス
-   - パスワード
-2. ログイン後、所属しているワークスペースが自動で選択され、タスク一覧が表示されます。
-3. 「作成」ボタンを押して新しいタスクを登録。
-   - タイトル、説明、期限、カテゴリ、担当者、状態などを入力。
-4. 一覧画面では以下の操作が可能です：
-   - タスクの編集・削除
-   - 状態の変更（開始前 → 進行中 → 完了）
-   - 担当者、カテゴリ、状態によるフィルター
-5. タスク進捗率は、バッチ処理（Rakeタスク）により定期的に集計され、各担当者ごとに表示されます。
+##📦 まとめ
+| 呼び出し元 | 処理タイプ | 備考|
+|:---|:---|:---|
+| Vue + API | 順次処理| ユーザー操作の安定性を優先 |
+| Rakeタスク| 並列処理| バッチ・性能比較用|
+| Locust| 両方ランダム| ベンチマーク用途|
