@@ -12,7 +12,7 @@ onMounted(async () => {
       currentUser.value = response.data.user
       console.log('ログイン中ユーザー:', currentUser.value)
     }catch (error) {
-      consoel.error('トークン無効または期限切れ', error)
+      console.error('トークン無効または期限切れ', error)
       localStorage.removeItem('token')
       localStorage.removeItem('user')
       windoe.location.href = '/login'

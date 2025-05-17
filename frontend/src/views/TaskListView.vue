@@ -440,4 +440,35 @@ const taskSections = computed(() => [
   border: none;
   cursor: pointer;
 }
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  display: flex;
+  flex-direction: column;
+  background: black;
+  padding: 3vh;
+  border-radius: 10px;
+  width: 50vw;
+  max-width: 90%;
+  text-align:left;
+  gap: 5px; 
+}
+
+.modal-actions {
+  margin-top: 20px;
+  display: flex;
+  justify-content: space-between;
+}
 </style>
