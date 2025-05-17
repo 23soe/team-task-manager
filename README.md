@@ -12,6 +12,7 @@
 １.　Thread：Ruby標準のスレッド機能。基本的な並列処理が可能
 ２.　Parallel gem：シンプルで直感的。ループ処理の並列化に特化（本プロジェクトで使用）
 ３.　Sidekiq： 非同期ジョブキュー方式。実務では最も使用されている
+![ERD Diagram](./docs/images/Parallel_log.png)
 
 ## 並列処理が有効なケース
 
