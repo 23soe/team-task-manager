@@ -312,9 +312,9 @@ const taskSections = computed(() => [
           ⭐カテゴリ:
           <select v-model="selectedCategory">
             <option value="">全て</option>
-            <option value="カテゴリ1">カテゴリ1</option>
-            <option value="カテゴリ2">カテゴリ2</option>
-            <option value="カテゴリ3">カテゴリ3</option>
+            <option value="業務">業務</option>
+            <option value="組織">組織</option>
+            <option value="勉強">勉強</option>
           </select>
         </label>
       </div> <!-- /.filters -->
@@ -439,5 +439,36 @@ const taskSections = computed(() => [
   padding: 0.5vh 0.5vw;
   border: none;
   cursor: pointer;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  display: flex;
+  flex-direction: column;
+  background: black;
+  padding: 3vh;
+  border-radius: 10px;
+  width: 50vw;
+  max-width: 80%;
+  text-align:left;
+  gap: 5px; 
+}
+
+.modal-actions {
+  margin-top: 20px;
+  display: flex;
+  justify-content: space-between;
 }
 </style>

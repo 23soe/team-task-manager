@@ -3,10 +3,10 @@
   .modal-content
     h2 📝 タスク編集
 
-    label.label-text ⬜ タイトル
-    input(v-model="task.title", placeholder="タイトル")
+    label.label-text ⬜ 目標
+    input(v-model="task.title", placeholder="目標")
 
-    label.label-text 📝 内容
+    label.label-text 📝 アクションプラン
     textarea(v-model="task.contents", placeholder="内容")
 
     label.label-text 📅 締切日
@@ -22,9 +22,9 @@
     label.label-text 🗂️
     select(v-model="task.category")
       option(value="") 選択してください
-      option(value="カテゴリ1") カテゴリ1
-      option(value="カテゴリ2") カテゴリ2
-      option(value="カテゴリ3") カテゴリ3
+      option(value="業務") 業務
+      option(value="組織") 組織
+      option(value="勉強") 勉強
 
     .modal-actions
       button(@click="$emit('save')") 保存
