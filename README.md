@@ -61,13 +61,13 @@
 [ログ記録 or API応答完了]
 ```
 
-##🧪 Locust テスト（locustfile.py）
+## 🧪 Locust テスト（locustfile.py）
 - /recalculate API に対して parallel: true/false の両方をランダムに送信
 - 並列処理と順次処理の性能差を定量的に比較できる
 - locust -f locustfile.py --host http://localhost:3000 で実行
 ![ERD Diagram](./docs/images/Locust.png)
 
-##📦 まとめ
+## 📦 まとめ
 | 呼び出し元 | 処理タイプ | 備考|
 |:---|:---|:---|
 | Vue + API | 順次処理| ユーザー操作の安定性を優先 |
